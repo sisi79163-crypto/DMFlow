@@ -1,0 +1,232 @@
+generator client {
+ provider = "prisma-client-js"
+}
+datasource db {
+ provider = "postgresql"
+ url = env("DATABASE_URL")
+}
+model User {
+ id String @id @default(cuid())
+ email String @unique
+ name String
+ passwordHash String
+ createdAt DateTime @default(now())
+ sessions Session[]
+ workspace Workspace?
+}
+model Session {
+ id String @id
+ userId String
+ user User @relation(fields:[userId], references:[id],onDelete:Cascade)
+ expiresAt DateTime
+ @@index([expiresAt])
+}
+model Workspace {
+ id String @id @default(cuid())
+ userId String @unique
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ name String @default("My workspace")
+ locale String @default("ar")
+ timezone String @default("Asia/Beirut")
+ businessHours Json @default("{}")
+ aiEnabled Boolean @default(false)
+ aiMode String @default("draft")
+ aiInstructions String @default("")
+ accounts InstagramAccount[]
+ automations Automation[]
+ leads Lead[]
+ knowledge Knowledge[]
+ logs Log[]
+ notifications Notification[]
+ links TrackedLink[]
+}
+model InstagramAccount {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ instagramId String @unique
+ username String
+ tokenEncrypted String
+ tokenExpiresAt DateTime
+ connected Boolean @default(true)
+ media Media[]
+ automations Automation[]
+ leads Lead[]
+}
+model Media {
+ id String @id
+ accountId String
+ account InstagramAccount @relation(fields:[accountId],references:[id],onDelete:Cascade)
+ caption String @default("")
+ mediaType String
+ mediaUrl String?
+ permalink String?
+ timestamp DateTime
+}
+model Automation {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ accountId String
+ account InstagramAccount @relation(fields:[accountId],references:[id],onDelete:Cascade)
+ name String
+ mediaId String
+ trigger String @default("keywords")
+ keywords String[]
+ messageA String
+ messageB String @default("")
+ publicReply String @default("")
+ enabled Boolean @default(false)
+ cooldownHours Int @default(24)
+ startsAt DateTime?
+ endsAt DateTime?
+ flow Json @default("{\"nodes\":[],\"edges\":[]}")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ comments Comment[]
+ executions Execution[]
+ @@index([accountId,mediaId,enabled])
+}
+model Lead {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ accountId String
+ account InstagramAccount @relation(fields:[accountId],references:[id],onDelete:Cascade)
+ instagramId String
+ username String @default("")
+ name String @default("")
+ status String @default("Interested")
+ tags String[] @default(["Interested"])
+ lastInteraction DateTime @default(now())
+ lastInboundAt DateTime?
+ lastOutboundAt DateTime?
+ optedOut Boolean @default(false)
+ aiPaused Boolean @default(false)
+ comments Comment[]
+ messages Message[]
+ executions Execution[]
+ @@unique([accountId,instagramId])
+ @@index([workspaceId,lastInteraction])
+}
+model Comment {
+ triggerKeyword String @default("")
+ id String @id
+ leadId String
+ lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+ automationId String?
+ automation Automation? @relation(fields:[automationId],references:[id],onDelete:SetNull)
+ mediaId String
+ text String
+ createdAt DateTime
+}
+model Message {
+ updatedAt DateTime @updatedAt
+ id String @id @default(cuid())
+ leadId String
+ lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+ externalId String? @unique
+ dedupeKey String @unique
+ direction String
+ kind String @default("dm")
+ body String
+ status String @default("pending")
+ variant String?
+ automationId String?
+ commentId String?
+ createdAt DateTime @default(now())
+ sentAt DateTime?
+ @@index([leadId,createdAt])
+}
+model Execution {
+ id String @id @default(cuid())
+ leadId String
+ lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+ automationId String
+ automation Automation @relation(fields:[automationId],references:[id],onDelete:Cascade)
+ cursor String?
+ state String @default("waiting")
+ variant String
+ updatedAt DateTime @updatedAt
+ @@unique([leadId,automationId])
+}
+model Knowledge {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ title String
+ category String @default("business")
+ content String
+ updatedAt DateTime @updatedAt
+}
+model WebhookEvent {
+ id String @id
+ accountExternalId String
+ payload Json
+ status String @default("queued")
+ error String?
+ createdAt DateTime @default(now())
+ @@index([accountExternalId,createdAt])
+}
+model Job {
+ id String @id @default(cuid())
+ key String @unique
+ type String
+ payload Json
+ status String @default("pending")
+ attempts Int @default(0)
+ runAt DateTime @default(now())
+ lockedAt DateTime?
+ error String?
+ createdAt DateTime @default(now())
+ @@index([status,runAt])
+}
+model Log {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ type String
+ action String
+ detail String
+ createdAt DateTime @default(now())
+ @@index([workspaceId,createdAt])
+}
+model Notification {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ title String
+ read Boolean @default(false)
+ createdAt DateTime @default(now())
+}
+model TrackedLink {
+ id String @id @default(cuid())
+ workspaceId String
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+ destination String
+ label String
+ clicks Int @default(0)
+ createdAt DateTime @default(now())
+}
+model RateLimit {
+ key String @id
+ count Int
+ resetAt DateTime
+}
+model OAuthState {
+ id String @id
+ workspaceId String
+ expiresAt DateTime
+}
+
+model InboundReceipt {
+ mid String @id
+ executionId String?
+ cursor String?
+ completed Boolean @default(false)
+ createdAt DateTime @default(now())
+}
+model DeletionRequest {
+ id String @id
+ completedAt DateTime @default(now())
+}
