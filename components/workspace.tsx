@@ -95,6 +95,7 @@ export default function Workspace() {
     [dark, setDark] = useState(false),
     [mobile, setMobile] = useState(false),
     [toast, setToast] = useState(""),
+    [connectionLink, setConnectionLink] = useState(""),
     [notifications, setNotifications] = useState(false),
     [editor, setEditor] = useState<any>(null),
     [q, setQ] = useState(""),
@@ -173,17 +174,28 @@ export default function Workspace() {
   function run(action: string, payload: unknown) {
     void act(action, payload).catch(() => {});
   }
-  async function connect() {
+  useEffect(() => {
+    if (!connectionLink) return;
+    const timer = setTimeout(() => setConnectionLink(""), 540000);
+    return () => clearTimeout(timer);
+  }, [connectionLink]);
+  async function startConnection(copyOnly = false) {
     setBusy(true);
+    setConnectionLink("");
     try {
       const r = await fetch("/api/meta/connect", { method: "POST" });
       const b = await r.json();
       if (!r.ok) throw new Error(b.error);
-      location.assign(b.url);
+      if (copyOnly) setConnectionLink(b.url);
+      else location.assign(b.url);
     } catch (e) {
       setToast((e as Error).message);
+    } finally {
       setBusy(false);
     }
+  }
+  async function connect() {
+    await startConnection();
   }
   const loadMessages = useCallback(async (id: string) => {
     const r = await fetch(
@@ -1542,6 +1554,37 @@ export default function Workspace() {
                   <Instagram size={18} />
                   {t("ربط حساب Instagram", "Connect Instagram")}
                 </button>
+                <div style={{ marginTop: 16 }}>
+                  <p className="muted">
+                    {t(
+                      "إذا فتح تطبيق Instagram وظهر خطأ، جهّز رابطًا وانسخه ثم الصقه في شريط عنوان Safari نفسه. أكمل خلال 9 دقائق ولا تشارك الرابط.",
+                      "If the Instagram app opens with an error, prepare and copy a link, then paste it into the address bar of this same browser. Complete within 9 minutes and do not share the link.",
+                    )}
+                  </p>
+                  <button className="button" disabled={busy} onClick={() => void startConnection(true)}>
+                    {t("تجهيز رابط لسفاري", "Prepare browser link")}
+                  </button>
+                  {connectionLink && (
+                    <div style={{ marginTop: 12 }}>
+                      <input
+                        aria-label={t("رابط ربط Instagram", "Instagram connection link")}
+                        value={connectionLink}
+                        readOnly
+                        dir="ltr"
+                        style={{ width: "100%", marginBottom: 8 }}
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                      <button className="button" onClick={() => {
+                        void navigator.clipboard.writeText(connectionLink)
+                          .then(() => setToast(t("تم النسخ. الصقه في شريط عنوان سفاري", "Copied. Paste into your browser address bar")))
+                          .catch(() => setToast(t("اضغط على حقل الرابط وانسخه يدويًا", "Select the link field and copy it manually")));
+                      }}>
+                        <Copy size={17} />
+                        {t("نسخ رابط الربط", "Copy connection link")}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {!data.configured.meta && (
                   <div className="alert">
                     {t(
