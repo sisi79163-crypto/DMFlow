@@ -49,6 +49,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import Auth from "./auth";
+import AutomationPreview from "./automation-preview";
 import { defaultFlow, type Flow } from "@/lib/flow";
 const FlowBuilder = dynamic(() => import("./flow-builder"), {
   ssr: false,
@@ -210,6 +211,7 @@ export default function Workspace() {
     const isPricing = template === t("استفسار عن السعر", "Pricing enquiry");
     const isInterest = template === t("عميل مهتم", "Capture interest");
     const isLink = template === t("إرسال رابط", "Share a link");
+    const isDua = template === t("دعاء بالخاص", "Prayer by DM");
     f.nodes.push({
       id: "answer",
       position: { x: 200, y: 390 },
@@ -248,22 +250,35 @@ export default function Workspace() {
       });
       f.edges.push({ id: "e4", source: "answer", target: "tag" });
     }
+    if (isDua) {
+      f.nodes = f.nodes.filter((n) => n.id !== "answer");
+      f.edges = f.edges.filter((e) => e.target !== "answer");
+    }
     setEditor({
       name: template || "",
-      accountId: data.accounts[0]?.id || "",
+      accountId: data.accounts.find((a: any) => a.connected)?.id || "",
       mediaId: "",
       trigger: "keywords",
-      keywords: isPricing
-        ? ["السعر", "بكم", "price"]
-        : isInterest
-          ? ["مهتم", "بدي", "interested"]
-          : ["رابط", "أرسل", "link"],
-      messageA: t(
-        "أهلًا! شكرًا لاهتمامك. رد على هذه الرسالة لأرسل لك التفاصيل.",
-        "Thanks for your interest! Reply here and I’ll send you the details.",
-      ),
+      keywords: isDua
+        ? ["دعاء", "هدية"]
+        : isPricing
+          ? ["السعر", "بكم", "price"]
+          : isInterest
+            ? ["مهتم", "بدي", "interested"]
+            : ["رابط", "أرسل", "link"],
+      messageA: isDua
+        ? t(
+            "أسأل الله أن يشرح صدرك، وييسّر أمرك، ويبارك لك في أهلك ورزقك، ويرزقك طمأنينة القلب وحسن التوكل عليه.",
+            "May Allah ease your worries, bless your family and provision, and grant you peace of heart.",
+          )
+        : t(
+            "أهلًا! شكرًا لاهتمامك. رد على هذه الرسالة لأرسل لك التفاصيل.",
+            "Thanks for your interest! Reply here and I’ll send you the details.",
+          ),
       messageB: "",
-      publicReply: "",
+      publicReply: isDua
+        ? t("بعتلك الدعاء بالخاص", "Sent the prayer to your DMs")
+        : "",
       cooldownHours: 24,
       startsAt: null,
       endsAt: null,
@@ -822,6 +837,14 @@ export default function Workspace() {
             <>
               <div className="template-grid">
                 {[
+                  [
+                    BookOpen,
+                    t("دعاء بالخاص", "Prayer by DM"),
+                    t(
+                      "دعاء جاهز لكل تعليق مطابق.",
+                      "A prayer for every matching comment.",
+                    ),
+                  ],
                   [
                     Link2,
                     t("إرسال رابط", "Share a link"),
@@ -1976,6 +1999,27 @@ export default function Workspace() {
           </footer>
         </main>
       </div>
+      <nav
+        className="mobile-bottom-nav"
+        aria-label={t("التنقل السريع", "Quick navigation")}
+      >
+        {nav
+          .filter(([id]) =>
+            ["dashboard", "automations", "inbox", "analytics"].includes(id),
+          )
+          .map(([id, Icon, labelAr, labelEn]) => (
+            <button
+              type="button"
+              key={id}
+              className={view === id ? "active" : ""}
+              aria-current={view === id ? "page" : undefined}
+              onClick={() => navigate(id)}
+            >
+              <Icon size={20} />
+              <span>{t(labelAr, labelEn)}</span>
+            </button>
+          ))}
+      </nav>
       {toast && (
         <div className="toast" role="status">
           <Check size={17} />
@@ -2197,11 +2241,25 @@ export default function Workspace() {
                     )}
                   </p>
                 </div>
-                <FlowBuilder
-                  ar={ar}
-                  value={editor.flow}
-                  onChange={(flow) => setEditor({ ...editor, flow })}
-                />
+                <div className="editor-right">
+                  <AutomationPreview
+                    ar={ar}
+                    username={
+                      data.accounts.find((a: any) => a.id === editor.accountId)
+                        ?.username || ""
+                    }
+                    trigger={editor.trigger}
+                    keywords={editor.keywords}
+                    messageA={editor.messageA}
+                    messageB={editor.messageB || ""}
+                    publicReply={editor.publicReply || ""}
+                  />
+                  <FlowBuilder
+                    ar={ar}
+                    value={editor.flow}
+                    onChange={(flow) => setEditor({ ...editor, flow })}
+                  />
+                </div>
               </div>
               <div className="modal-footer">
                 {editor.id && (
@@ -2232,7 +2290,9 @@ export default function Workspace() {
                 </button>
                 <button
                   className="button primary"
-                  disabled={busy || !data.accounts.length}
+                  disabled={
+                    busy || !data.accounts.some((a: any) => a.connected)
+                  }
                 >
                   <Check size={17} />
                   {t("حفظ التدفق", "Save flow")}
