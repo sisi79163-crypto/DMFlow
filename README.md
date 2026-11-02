@@ -4,7 +4,7 @@ Source: https://github.com/sisi79163-crypto/DMFlow
 
 A bilingual, mobile-first Instagram automation workspace built with Next.js, TypeScript, Tailwind CSS, PostgreSQL and Prisma. It includes a real application backend and a durable PostgreSQL worker queue. No mock analytics, no Instagram password collection, no unofficial Instagram API.
 
-**Status:** implementation ready for local integration testing and deployment configuration. Live Meta connection, external AI provider, hosting require the operator’s actual accounts/configuration. This repository does not claim Meta approval or a completed production rollout.
+**Status:** actively maintained and used in production by the maintainer for live Instagram comment-to-DM automations via Meta's official API. Live Meta connection, external AI provider, and hosting require the operator's actual accounts/configuration. This repository does not claim Meta approval.
 
 ## Included
 
