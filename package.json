@@ -15,9 +15,9 @@
     "test:integration": "node --import tsx scripts/integration-test.ts",
     "format": "prettier --write app components lib api database workers docs scripts tests README.md next.config.ts tsconfig.json package.json docker-compose.yml .github/workflows/ci.yml"
   },
-  "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
+  "keywords": ["instagram", "automation", "meta-api", "nextjs", "dm-automation"],
+  "author": "Mostafa Mohamad",
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "@prisma/client": "^6.19.3",
